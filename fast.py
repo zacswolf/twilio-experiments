@@ -2,11 +2,10 @@ import os
 import dotenv
 
 dotenv.load_dotenv()
-
 import json
 import base64
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
-from twilio.twiml.voice_response import VoiceResponse, Start
+from twilio.twiml.voice_response import VoiceResponse, Connect
 from twilio.rest import Client
 
 app = FastAPI()
@@ -40,9 +39,9 @@ def read_root():
 def initiate_call():
     """Initiate a call to the target phone number."""
     response = VoiceResponse()
-    start = Start()
-    start.stream(url=f"wss://{NGROK_URL}/media")
-    response.append(start)
+    connect = Connect()
+    connect.stream(url=f"wss://{NGROK_URL}/media")
+    response.append(connect)
     response.say("Hello, your call audio is being streamed.")
     twiml_response = str(response)
     print(twiml_response)
@@ -71,8 +70,18 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # Decoding the media payload
                 try:
-                    decoded_payload = base64.b64decode(payload)
-                    print(f"Received {len(decoded_payload)} bytes of audio data")
+                    # decoded_payload = base64.b64decode(payload)
+                    # print(f"Received {len(decoded_payload)} bytes of audio data")
+
+                    # Echoing back the payload
+                    echo_payload = {
+                        "event": "media",
+                        "streamSid": message["streamSid"],
+                        "media": {
+                            "payload": payload  # Send the same base64 payload back
+                        },
+                    }
+                    await websocket.send_text(json.dumps(echo_payload))
 
                 except Exception as decode_error:
                     print(f"Error decoding payload: {decode_error}")
